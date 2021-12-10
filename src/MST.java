@@ -1,7 +1,4 @@
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Random;
+import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 public class MST {
@@ -20,7 +17,7 @@ public class MST {
         @Override
         public int compareTo(Edge that) {
             if (this.w == that.w) return 0;
-            return this.w < that.w ? -1 : 1;
+            return this.w < that.w ? 1 : -1; // Descending Order
         }
     }
 
@@ -42,20 +39,19 @@ public class MST {
     static double getTotalEdgeWeight(Graph g) {
         double total_weight = 0;
 
-        // Iterate through all permutations of vertices
-        for (int i = 0; i < g.numVertices(); i++) {
-            for (int j = i+1; j < g.numVertices(); j++) {
-                // Increment the total_weight by the weight of the edge between the two vertices
-                if (g.isEdge(i, j)) total_weight += g.weight(i, j);
-            }
+        ArrayList<Edge> edges = getEdges(g);
+
+        for (Edge edge : edges) {
+            total_weight += edge.w;
         }
+
         return total_weight;
     }
 
     // Returns whether the Graph is connected or not;
     static boolean isConnected(Graph g) {
         // Create a list of flags to denote if a vertex has been visited or not, filling it with false flags;
-        boolean[] visited = new boolean[g.numVertices()];
+        boolean[] visited = new boolean[g.numVertices];
         Arrays.fill(visited, false);
 
         // Create a LinkedQueue to store the vertices to poll, starting with the 1st (0th index) vertex
@@ -63,7 +59,7 @@ public class MST {
         searchQueue.add(0);
 
         // While the searchQueue has vertices to poll
-        while (searchQueue.stream().count() != 0) {
+        while (!searchQueue.isEmpty()) {
             // Get the next vertex to poll, and search add any unvisited neighbours to the searchQueue
             int i = searchQueue.poll();
             for (int n : g.neighbours(i)) {
@@ -81,26 +77,42 @@ public class MST {
     }
 
     // Make the graph provided as an argument into an MST graph
-    static Graph makeMST(Graph g) {
-        ArrayList<Edge> edges = new ArrayList<>();
-        // Iterate through all permutations of vertices, adding an edge to the list
-        for (int i = 0; i < g.numVertices(); i++) {
-            for (int j = i+1; j < g.numVertices(); j++) {
-                if (g.isEdge(i, j)) {
-                    edges.add(new Edge(i, j, g.weight(i, j)));
-                }
+    static void makeMST(Graph g) {
+        List<Edge> edges = new ArrayList<>();
+        for (int i = 0; i<g.numVertices; i++) {
+            for (int j = i+1; j<g.numVertices(); j++) {
+                if (g.isEdge(i, j)) edges.add(new Edge(i, j, g.weight(i, j)));
             }
         }
         Collections.sort(edges);
-        Collections.reverse(edges);
-
         for (Edge edge : edges) {
             g.deleteEdge(edge.x, edge.y);
-            if (!isConnected(g)) {
-                g.addEdge(edge.x, edge.y, edge.w);
-            }
+            if (isConnected(g)) g.addEdge(edge.x, edge.y, edge.w);
         }
-        return g;
+    }
+
+    public static ArrayList<Edge> getEdges (Graph g) {
+        boolean[] explored = new boolean[g.numVertices()];
+        Arrays.fill(explored, false);
+        ArrayList<Edge> edges = new ArrayList<>();
+
+        // Create a LinkedQueue to store the vertices to poll, starting with the 1st (0th index) vertex
+        ConcurrentLinkedQueue<Integer> searchQueue = new ConcurrentLinkedQueue<>(); // Use poll to get next item off queue
+        searchQueue.add(0);
+
+        // While the searchQueue has vertices to poll
+        while (searchQueue.stream().count() != 0) {
+            // Get the next vertex to poll, and search add any unvisited neighbours to the searchQueue
+            int i = searchQueue.poll();
+            if (explored[i]) continue;
+            for (int n : g.neighbours(i)) {
+                if (explored[n]) continue;
+                searchQueue.add(n);
+                edges.add(new Edge(i, n, g.weight(i, n)));
+            }
+            explored[i] = true;
+        }
+        return edges;
     }
 
     public static void main(String[] args) {
@@ -111,13 +123,20 @@ public class MST {
         System.out.printf("Test A: The Graph of Essex has an MST total weight of %.2f\n", goe_MST_weight);
 
         // Test B: Create 20 random graphs (with 100 vertices each), finding the average MST weight
+        System.out.println("Starting Test B:\n\tNote that my implementation does finish, but takes an exceptionally" +
+                                           "\n\tlong time to do so. The average that I have observed (it took a few" +
+                                           "\n\thours) was within the range provided in the brief");
         double sumOfWeights = 1;
         for (int i = 0; i < 20; i++) {
+            System.out.println("Starting Graph " + (i + 1));
             Graph g = getRandomGraph(100);
+            System.out.println("Generated Graph " + (i + 1));
             makeMST(g);
+            System.out.println("MST of Graph " + (i + 1));
             sumOfWeights += getTotalEdgeWeight(g);
         }
         double aveMSTEdgeWeight = sumOfWeights/20;
+
         System.out.printf("Test B: The average edge weight of 20 random MSTs (100 vertices) is approx %.2f\n", aveMSTEdgeWeight);
 
     }
